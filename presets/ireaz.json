@@ -1,0 +1,23 @@
+{
+  "name": "ireaz",
+  "description": "Partie personnalisee Faille de l'invocateur : moi seul contre 5 bots.",
+  "lobby": {
+    "lobbyName": "ireaz",
+    "spectatorPolicy": "AllAllowed"
+  },
+  "difficulty": "intermediaire",
+  "teams": {
+    "mine": {
+      "bots": []
+    },
+    "enemy": {
+      "bots": [
+        { "champion": "Warwick", "role": "top" },
+        { "champion": "Amumu", "role": "jungle" },
+        { "champion": "Malphite", "role": "mid" },
+        { "champion": "Kai'Sa", "role": "bot" },
+        { "champion": "Lulu", "role": "support" }
+      ]
+    }
+  }
+}
