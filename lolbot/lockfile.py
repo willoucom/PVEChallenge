@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 #: Chemin d'installation par defaut du client sous Windows.
-DEFAULT_INSTALL_DIR = Path(r"C:\Games\Riot Games\League of Legends")
+DEFAULT_INSTALL_DIR = Path(r"C:\Riot Games\League of Legends")
 
 #: Variables d'environnement acceptees pour surcharger la localisation.
 ENV_LOCKFILE = "LOLBOT_LOCKFILE"

@@ -1,92 +1,96 @@
 # LolBotChallenge
 
-Outil en ligne de commande qui prepare un lobby de partie personnalisee League of
-Legends via l'API locale du client (LCU). Il ne lance jamais la partie : il cree le
-lobby et ajoute les bots, le demarrage reste manuel.
+Command-line tool that prepares a League of Legends custom game lobby through the
+client's local API (LCU). It never starts the game: it creates the lobby and adds
+the bots, launching stays manual.
 
-## Prerequis
+## Requirements
 
-- Windows, client League of Legends installe et **ouvert**.
-- Python 3.11+.
-- `pip install -r requirements.txt` (une seule dependance : `requests`).
+- Windows, League of Legends client installed and **running**.
+- Python 3.14+.
+- [uv](https://docs.astral.sh/uv/) for dependency management (a single dependency:
+  `requests`).
 
-## Le lockfile
-
-Le client ecrit ses identifiants d'API dans un fichier nomme `lockfile`, a la
-racine de son dossier d'installation. Chemin par defaut de cet outil :
-
-```
-C:\Games\Riot Games\League of Legends\lockfile
+```bash
+uv sync
 ```
 
-Il est cree au demarrage du client et supprime a sa fermeture. Son contenu est une
-ligne unique :
+## The lockfile
+
+The client writes its API credentials to a file named `lockfile`, at the root of
+its installation directory. This tool's default path:
+
+```
+C:\Riot Games\League of Legends\lockfile
+```
+
+It is created when the client starts and removed when it closes. Its content is a
+single line:
 
 ```
 LeagueClient:<pid>:<port>:<password>:https
 ```
 
-L'outil s'en sert pour construire `https://127.0.0.1:<port>` et s'authentifier en
-HTTP basic avec `riot:<password>`. Le certificat du client etant auto-signe, la
-verification TLS est desactivee.
+The tool uses it to build `https://127.0.0.1:<port>` and authenticate with HTTP
+basic auth as `riot:<password>`. The client's certificate is self-signed, so TLS
+verification is disabled.
 
-Si le client est installe ailleurs :
+If the client is installed elsewhere:
 
 ```bash
-python -m lolbot --install-dir "D:\Jeux\League of Legends" lobby ireaz
+uv run lolbot --install-dir "D:\Games\League of Legends" lobby ireaz
 ```
 
 ```bash
-python -m lolbot --lockfile "D:\Jeux\League of Legends\lockfile" lobby ireaz
+uv run lolbot --lockfile "D:\Games\League of Legends\lockfile" lobby ireaz
 ```
 
-Equivalents par variables d'environnement : `LOLBOT_LOCKFILE`, `LOLBOT_INSTALL_DIR`.
+Environment variable equivalents: `LOLBOT_LOCKFILE`, `LOLBOT_INSTALL_DIR`.
 
 ## Usage
 
-### `lobby` — creer le lobby depuis un preset
+### `lobby` — create the lobby from a preset
 
 ```bash
-python -m lolbot lobby ireaz
+uv run lolbot lobby ireaz
 ```
 
 ```bash
-python -m lolbot lobby ireaz --difficulty intro
+uv run lolbot lobby ireaz --difficulty intro
 ```
 
-L'argument est un nom de preset de `presets/`, ou le chemin d'un fichier JSON.
-`--difficulty` (`intro`, `debutant`, `intermediaire`) surcharge la difficulte du
-preset et s'applique a tous ses bots.
+The argument is the name of a preset from `presets/`, or the path to a JSON file.
+`--difficulty` (`intro`, `debutant`, `intermediaire`) overrides the preset's
+difficulty and applies to all of its bots.
 
-Si un lobby est deja ouvert dans le client, il est ferme puis recree. Les noms de
-champions sont resolus avant toute action, donc une faute de frappe dans un preset
-laisse le lobby en cours intact.
+If a lobby is already open in the client, it is closed and recreated. Champion
+names are resolved before any action is taken, so a typo in a preset leaves the
+current lobby untouched.
 
-### `discover` — observer le lobby
+### `discover` — watch the lobby
 
-Ne fait que des `GET`, ne modifie jamais l'etat du client. Interroge
-`GET /lol-lobby/v2/lobby` toutes les 500 ms, affiche l'etat initial complet du
-lobby puis, a chaque changement, le diff du JSON sous forme de chemins pointes.
+Only issues `GET` requests, never modifies the client's state. Polls
+`GET /lol-lobby/v2/lobby` every 500 ms, prints the full initial lobby state, then
+prints the JSON diff as dotted paths on every change.
 
 ```bash
-python -m lolbot discover
+uv run lolbot discover
 ```
 
-Sert a relever la forme exacte du JSON quand le client evolue. Intervalle
-configurable : `--interval 0.25`.
+Used to record the exact shape of the JSON as the client evolves. Configurable
+interval: `--interval 0.25`.
 
 ## Presets
 
-Un preset est un fichier JSON dans `presets/`. `presets/ireaz.json` decrit mon
-equipe (moi seul, aucun bot) et l'equipe adverse : Warwick top, Amumu jungle,
-Malphite mid, Kai'Sa bot, Lulu support.
+A preset is a JSON file in `presets/`. `presets/ireaz.json` describes my team (me
+alone, no bots) and the enemy team: Warwick top, Amumu jungle, Malphite mid,
+Kai'Sa bot, Lulu support.
 
-Le bloc `lobby` porte le nom du lobby et la politique de spectateurs. La carte et
-le mode n'y figurent pas : cet outil ne cree que des parties personnalisees sur la
-Faille de l'invocateur en selection aveugle.
+The `lobby` block carries the lobby name and the spectator policy. Map and game
+mode are not part of it: this tool only creates custom games on Summoner's Rift in
+blind pick.
 
-Le preset emploie son propre vocabulaire, traduit vers celui du client dans
-`lolbot/lobby.py` :
+Presets use their own vocabulary, translated to the client's in `lolbot/lobby.py`:
 
 | Preset | Client |
 |---|---|
@@ -94,45 +98,45 @@ Le preset emploie son propre vocabulaire, traduit vers celui du client dans
 | `intro` / `debutant` / `intermediaire` | `RSINTRO` / `RSBEGINNER` / `RSINTERMEDIATE` |
 | `teams.mine` / `teams.enemy` | `teamId` `"100"` / `"200"` |
 
-Les champions sont nommes, pas identifies par `championId` : la correspondance est
-lue sur le client a chaque execution, en croisant
-`/lol-game-data/assets/v1/champion-summary.json` avec
-`/lol-lobby/v2/lobby/custom/available-bots`. Le catalogue de champions contient
-plusieurs entrees de meme nom avec des identifiants differents ; le croisement est
-ce qui designe celle qui est jouable en bot.
+Champions are named, not identified by `championId`: the mapping is read from the
+client on every run, by intersecting
+`/lol-game-data/assets/v1/champion-summary.json` with
+`/lol-lobby/v2/lobby/custom/available-bots`. The champion catalog holds several
+entries sharing the same name under different identifiers; the intersection is
+what designates the one that is playable as a bot.
 
-## Endpoints utilises
+## Endpoints used
 
-Tous verifies contre un client League of Legends ouvert.
+All verified against a running League of Legends client.
 
-| Appel | Reponse | Corps |
+| Call | Response | Body |
 |---|---|---|
-| `POST /lol-lobby/v2/lobby` | `200` | `queueId` **3100**, `customGameLobby.configuration.mutators.id` **19** ; `mapId`, `gameMode` et `spectatorPolicy` sont dans `configuration` |
-| `POST /lol-lobby/v1/lobby/custom/bots` | `204` | `championId`, `botDifficulty`, `teamId` (chaine), `position`, `botUuid` (chaine vide acceptee, le client genere l'identifiant) |
-| `GET /lol-lobby/v2/lobby` | `200` / `404` | 404 quand aucun lobby n'est ouvert |
-| `DELETE /lol-lobby/v2/lobby` | `204` | ferme le lobby ouvert |
-| `GET /lol-lobby/v2/lobby/custom/available-bots` | `200` | liste des champions jouables en bot et de leurs difficultes |
-| `GET /lol-game-data/assets/v1/champion-summary.json` | `200` | catalogue des champions |
+| `POST /lol-lobby/v2/lobby` | `200` | `queueId` **3100**, `customGameLobby.configuration.mutators.id` **19**; `mapId`, `gameMode` and `spectatorPolicy` live in `configuration` |
+| `POST /lol-lobby/v1/lobby/custom/bots` | `204` | `championId`, `botDifficulty`, `teamId` (string), `position`, `botUuid` (empty string accepted, the client generates the identifier) |
+| `GET /lol-lobby/v2/lobby` | `200` / `404` | 404 when no lobby is open |
+| `DELETE /lol-lobby/v2/lobby` | `204` | closes the open lobby |
+| `GET /lol-lobby/v2/lobby/custom/available-bots` | `200` | champions playable as bots and their difficulties |
+| `GET /lol-game-data/assets/v1/champion-summary.json` | `200` | champion catalog |
 
-`configuration.mapId` et `configuration.gameMode` ne choisissent pas la carte ni le
-mode : le client les deduit du `queueId` et ignore ce que le corps annonce. Ils
-sont donc figes dans `lolbot/lobby.py` sur les valeurs de la file 3100, pour que le
-corps envoye decrive le lobby reellement cree.
+`configuration.mapId` and `configuration.gameMode` do not select the map or the
+mode: the client derives them from `queueId` and ignores what the body claims.
+They are therefore hardcoded in `lolbot/lobby.py` to the values of queue 3100, so
+that the body sent describes the lobby actually created.
 
-Recreer un lobby passe par le `DELETE`, jamais par un POST seul : poste par-dessus
-un lobby existant, `POST /lol-lobby/v2/lobby` applique bien la configuration mais
-conserve les membres deja presents, et un bot dont la position est deja occupee est
-alors refuse en renvoyant `204` sans rien ajouter.
+Recreating a lobby goes through the `DELETE`, never a bare POST: posted on top of
+an existing lobby, `POST /lol-lobby/v2/lobby` does apply the configuration but
+keeps the members already present, and a bot whose position is already taken is
+then rejected with a `204` that adds nothing.
 
-Le champ du role s'appelle `position` dans le corps du POST, et ressort en
-`botPosition` dans l'etat lu. `teamId` est envoye en chaine (`"100"` / `"200"`)
-mais ressort a `0` : c'est l'appartenance a `customTeam100` / `customTeam200` qui
-fait foi.
+The role field is named `position` in the POST body, and comes back as
+`botPosition` in the state that is read. `teamId` is sent as a string (`"100"` /
+`"200"`) but comes back as `0`: membership in `customTeam100` / `customTeam200` is
+what counts.
 
-Toute erreur HTTP affiche la requete envoyee, le statut, les en-tetes et le corps
-complet de la reponse : rien n'est avale.
+Any HTTP error prints the request sent, the status, the headers and the full
+response body: nothing is swallowed.
 
-## Ce qui reste a verifier
+## Still to verify
 
-- `queueId` 3100 correspond a la file « Faille — partie personnalisee aveugle » de
-  ce client. Rien ne garantit que cet identifiant soit stable d'un patch a l'autre.
+- `queueId` 3100 maps to this client's "Summoner's Rift — custom blind pick"
+  queue. Nothing guarantees that this identifier is stable across patches.

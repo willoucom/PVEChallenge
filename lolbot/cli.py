@@ -16,7 +16,7 @@ DIFFICULTIES = ("intro", "debutant", "intermediaire")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m lolbot",
+        prog="lolbot",
         description=(
             "Recree un lobby de partie personnalisee League of Legends via l'API "
             "locale du client (LCU). Le client doit etre ouvert."
