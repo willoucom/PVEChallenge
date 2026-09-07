@@ -46,20 +46,21 @@ jobs:
 
       - uses: actions/upload-artifact@v7.0.1
         with:
-          name: pvechallenge-exe
-          path: dist/pvechallenge.exe
+          name: pvechallenge
+          path: dist/pvechallenge
           if-no-files-found: error
 
-      # Browsers warn on, and sometimes block, a rarely-downloaded `.exe`: a zip
-      # comes down without a prompt. This says nothing about SmartScreen, which
-      # still warns when the unsigned binary is run. The workflow artifact needs
-      # no such treatment: GitHub already serves artifacts as zips.
-      - name: Package the executable
+      # The build produces a folder, which a Release cannot carry as such. The
+      # zip also spares the browser prompt that a bare `.exe` earns. It says
+      # nothing about SmartScreen, which still warns when the unsigned binary is
+      # run. The workflow artifact needs no such treatment: GitHub already
+      # serves artifacts as zips.
+      - name: Package the application
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: >
           Compress-Archive
-          -Path dist/pvechallenge.exe
+          -Path dist/pvechallenge
           -DestinationPath dist/pvechallenge-${{ github.ref_name }}.zip
 
       # Creating a Release that already exists is an error, which would break a

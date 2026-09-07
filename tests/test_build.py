@@ -59,3 +59,24 @@ def test_the_version_reaches_the_nuitka_call(monkeypatch):
 
     assert "--file-version=3.4.5" in commande
     assert "--product-version=3.4.5" in commande
+
+# ------------------------------------------------------------ packaging mode
+
+
+def test_the_build_is_standalone_not_onefile():
+    """A single-file build unpacks itself at run time, and Defender's machine
+    learning model scores that as a trojan. The same sources built standalone
+    pass, so the mode is not an implementation detail: it decides whether the
+    download reaches anyone at all.
+    """
+    commande = build.build_command()
+
+    assert "--standalone" in commande
+    assert "--onefile" not in commande
+
+
+def test_the_distribution_folder_is_named_after_the_product():
+    """Nuitka names it after the entry script, which would extract as `main.dist`."""
+    assert build.APP_DIR.name == "pvechallenge"
+    assert build.EXE.parent == build.APP_DIR
+    assert build.EXE.name == "pvechallenge.exe"

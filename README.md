@@ -11,8 +11,12 @@ adds the bots, launching stays manual.
 
 - Windows, League of Legends client installed and **running**.
 
-The released `.exe` is standalone: there is nothing else to install. It is not
-code-signed, so Windows SmartScreen warns the first time it runs.
+The release is a zip holding a folder. Extract it anywhere and run
+`pvechallenge.exe` from inside it; there is nothing to install, and nothing to
+uninstall. Keep the folder together: the executable needs what sits next to it.
+
+The binary is not code-signed, so Windows SmartScreen warns the first time it
+runs.
 
 To run from source you also need Python 3.14+ and
 [uv](https://docs.astral.sh/uv/) (a single dependency, `requests`):
@@ -229,10 +233,19 @@ uv run python build.py
 CI build cannot drift apart. It compiles `main.py`, not `pvechallenge/gui.py`: a package
 module compiled as a script loses its relative imports.
 
-The result, `dist/pvechallenge.exe`, is a single file embedding Python, the
-package, its presets and its icon. Building needs a C compiler: GitHub's Windows
-runners carry MSVC, and Nuitka picks up a local Visual Studio installation on its
-own. Without one, it downloads MinGW-w64 on first use.
+The result is `dist/pvechallenge/`, a folder holding the executable, Python, the
+package, its presets and its icon.
+
+It is deliberately not a single file. Nuitka can produce one, but such a binary
+unpacks itself into a temporary directory and runs from there, and Windows
+Defender's machine learning model scores that behaviour as a trojan -- browsers
+then refuse the download outright. The same sources built as a folder pass
+cleanly. A test asserts the mode, so an accidental return to a single file would
+not go unnoticed until a release stopped reaching anyone.
+
+Building needs a C compiler: GitHub's Windows runners carry MSVC, and Nuitka
+picks up a local Visual Studio installation on its own. Without one, it downloads
+MinGW-w64 on first use.
 
 ### Releasing
 
@@ -246,10 +259,9 @@ so `v1.2.0-rc1` is stamped as `1.2.0`; a tag holding no number at all fails the
 build rather than producing a binary labelled with nothing. Publishing is
 repeatable: a Release that already exists is updated instead of refused.
 
-The Release carries a zip rather than the bare `.exe`: browsers warn on, and
-sometimes block, an executable that few people have downloaded. That only
-concerns the download. The binary is unsigned either way, so Windows SmartScreen
-still warns the first time it runs.
+A Release cannot carry a folder, so it carries a zip. That also spares the
+prompt a bare `.exe` earns from browsers. Neither changes anything about
+SmartScreen, which still warns when the unsigned binary is run.
 
 The same workflow can be started by hand, which tests and builds, then uploads
 the binary as a workflow artifact without publishing anything. Artifacts need no

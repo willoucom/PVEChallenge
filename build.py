@@ -10,6 +10,7 @@ as a script loses its relative imports.
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -18,6 +19,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 ENTRY = ROOT / "main.py"
 DIST = ROOT / "dist"
+
+#: Nuitka names its distribution folder after the entry script, which would make
+#: the archive extract into `main.dist`. Renamed to something a user recognises.
+NUITKA_DIST = DIST / f"{ENTRY.stem}.dist"
+APP_DIR = DIST / "pvechallenge"
+EXE = APP_DIR / "pvechallenge.exe"
 
 #: Executable icon. It lives in the package, which is also where the window
 #: reads it from: one file serves both the executable and the title bar.
@@ -79,7 +86,12 @@ def build_command() -> list[str]:
         sys.executable,
         "-m",
         "nuitka",
-        "--onefile",
+        # A folder, not a single file. `--onefile` unpacks itself into a
+        # temporary directory and runs from there, and Defender's machine
+        # learning model scores that behaviour as Trojan:Win32/Wacatac.B!ml --
+        # measured on this very code, which the standalone build of the same
+        # sources passes cleanly. A blocked download costs more than a folder.
+        "--standalone",
         # No console: the application is a window, not a command.
         "--windows-console-mode=disable",
         # tkinter is not picked up by import analysis alone.
@@ -125,19 +137,36 @@ def main() -> int:
         print(f"Icone absente ({ICON}) : build avec l'icone par defaut.", file=sys.stderr)
 
     version = project_version()
-    print(f"{stamp_version(version)} : VERSION = {version!r}")
+    print(f"{stamp_version(version)}: VERSION = {version!r}")
 
     command = build_command()
     print(" ".join(command))
-    completed = subprocess.run(command, cwd=ROOT)
+    try:
+        completed = subprocess.run(command, cwd=ROOT)
+    finally:
+        # The stamp is needed while Nuitka compiles, and only then: it is now
+        # baked into the binary. Leaving it behind would make a source tree
+        # report the version of the last build instead of `dev`, and the test
+        # that asserts `dev` would fail for anyone who had built once.
+        STAMP.unlink(missing_ok=True)
+
     if completed.returncode != 0:
         return completed.returncode
 
-    produced = DIST / "pvechallenge.exe"
-    if not produced.is_file():
-        print(f"Nuitka a rendu 0 mais {produced} est absent.", file=sys.stderr)
+    if not NUITKA_DIST.is_dir():
+        print(f"Nuitka returned 0 but {NUITKA_DIST} is missing.", file=sys.stderr)
         return 1
-    print(f"{produced} ({produced.stat().st_size} octets)")
+
+    if APP_DIR.exists():
+        shutil.rmtree(APP_DIR)
+    NUITKA_DIST.rename(APP_DIR)
+
+    if not EXE.is_file():
+        print(f"{EXE} is missing from the distribution folder.", file=sys.stderr)
+        return 1
+
+    files = [path for path in APP_DIR.rglob("*") if path.is_file()]
+    print(f"{APP_DIR}: {len(files)} files, {sum(f.stat().st_size for f in files)} bytes")
     return 0
 
 
