@@ -17,6 +17,9 @@ class ChampionError(RuntimeError):
 def load_bot_champions(client: LcuClient) -> dict[str, int]:
     """Return `champion name -> championId`, restricted to available bots.
 
+    Requires an open custom lobby: outside of one the client answers
+    `available-bots` with an empty list, and the table would come back empty.
+
     The client's champion catalog holds several entries sharing the same name:
     the champion and its game-mode variants, which carry different identifiers.
     Filtering on the identifiers `available-bots` declares is what singles out

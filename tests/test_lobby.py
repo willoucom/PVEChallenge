@@ -167,16 +167,18 @@ def test_difficulte_surchargee_sapplique_a_tous_les_bots(preset_et_client):
     assert {corps["botDifficulty"] for corps in client.bots_postes} == {"RSINTRO"}
 
 
-def test_champion_inconnu_laisse_le_lobby_intact(preset_et_client):
-    """Champions are resolved before any action: nothing must have moved."""
+def test_champion_inconnu_referme_le_lobby_cree(preset_et_client):
+    """Resolution needs the lobby: on failure the lobby it needed is closed again."""
     from pvechallenge.champions import ChampionError
 
     nom, _preset, client = preset_et_client
     client.champions = {"Personne": 1}
     client.lobby_ouvert = True
+    lignes = []
 
     with pytest.raises(ChampionError):
-        run_lobby(client, nom, report=lambda _message: None)
+        run_lobby(client, nom, report=lignes.append)
 
-    assert client.posts == []
-    assert client.supprime == 0
+    assert client.bots_postes == []
+    assert not client.lobby_ouvert
+    assert any("has been closed" in ligne for ligne in lignes)

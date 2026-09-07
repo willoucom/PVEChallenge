@@ -223,16 +223,6 @@ def run_lobby(
         preset["difficulty"] = difficulty
     chosen = preset["difficulty"]
 
-    # Resolve every champion before touching the client: a wrong name must fail
-    # the run without having closed the current lobby, and without leaving a
-    # half-filled one behind.
-    champions = load_bot_champions(client)
-    planned = [
-        (side, bot["champion"], resolve(champions, bot["champion"]), bot["role"])
-        for side, team in preset.get("teams", {}).items()
-        for bot in team.get("bots", [])
-    ]
-
     if close_existing_lobby(client):
         report(t("lobby.closed_existing"))
 
@@ -248,6 +238,22 @@ def run_lobby(
         )
     )
     client.post_json(LOBBY_PATH, payload)
+
+    # The champions can only be resolved from here: the client leaves
+    # `available-bots` empty as long as no custom lobby exists. A name it does
+    # not know therefore fails with the lobby already created, so that lobby is
+    # closed again rather than left behind empty.
+    try:
+        champions = load_bot_champions(client)
+        planned = [
+            (side, bot["champion"], resolve(champions, bot["champion"]), bot["role"])
+            for side, team in preset.get("teams", {}).items()
+            for bot in team.get("bots", [])
+        ]
+    except ChampionError:
+        close_existing_lobby(client)
+        report(t("lobby.closed_after_failure"))
+        raise
 
     for side, champion, champion_id, role in planned:
         client.post_json(BOTS_PATH, build_bot_payload(champion_id, chosen, side, role))

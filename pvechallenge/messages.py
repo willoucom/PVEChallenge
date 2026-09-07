@@ -65,6 +65,9 @@ ENGLISH: dict[str, str] = {
         "state of the client."
     ),
     "lobby.closed_existing": "Existing lobby closed.",
+    "lobby.closed_after_failure": (
+        "The lobby just created has been closed: a champion could not be resolved."
+    ),
     "lobby.creating": "Creating lobby {name!r} (mapId={map_id}, {mode}, queueId={queue_id})",
     "lobby.bot_added": "  + {champion} ({champion_id}) {position} {difficulty} team {team}",
     "lobby.ready": "Lobby ready: {count} bot(s) added. Start the game from the client.",
@@ -163,6 +166,10 @@ FRENCH: dict[str, str] = {
         "Verifie l'etat du client."
     ),
     "lobby.closed_existing": "Lobby existant ferme.",
+    "lobby.closed_after_failure": (
+        "Le lobby qui vient d'etre cree a ete referme : un champion n'a pas pu etre "
+        "resolu."
+    ),
     "lobby.creating": "Creation du lobby {name!r} (mapId={map_id}, {mode}, queueId={queue_id})",
     "lobby.bot_added": "  + {champion} ({champion_id}) {position} {difficulty} equipe {team}",
     "lobby.ready": "Lobby pret : {count} bot(s) ajoute(s). Lance la partie depuis le client.",

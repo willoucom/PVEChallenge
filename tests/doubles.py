@@ -40,10 +40,17 @@ class ClientFactice:
 
     def get_json(self, path: str, **kwargs: Any) -> Any:
         if path.endswith("available-bots"):
+            # The real client answers with an empty list as long as no custom
+            # lobby exists. A double that always answered would hide the very
+            # ordering this endpoint imposes on the caller.
+            if not self.lobby_ouvert:
+                return []
             return [{"id": identifiant} for identifiant in self.champions.values()]
         return [{"id": identifiant, "name": nom} for nom, identifiant in self.champions.items()]
 
     def post_json(self, path: str, payload: Any, **kwargs: Any) -> ReponseFactice:
+        if path == LOBBY_PATH:
+            self.lobby_ouvert = True
         self.posts.append((path, payload))
         return ReponseFactice(200)
 

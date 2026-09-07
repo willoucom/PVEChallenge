@@ -95,8 +95,9 @@ carries the outcome, and its colour carries the state: amber while working, gree
 on success, red on failure with the reason.
 
 If a lobby is already open in the client, it is closed and recreated. Champion
-names are resolved before any action is taken, so a typo in a preset leaves the
-current lobby untouched.
+names are only resolved once the new lobby exists, because that is when the
+client lists the champions playable as bots; a typo in a preset therefore closes
+that lobby again and says so in the log.
 
 The **Options** panel holds the lockfile path and a button that opens your own
 presets folder in Explorer.
@@ -170,7 +171,7 @@ All verified against a running League of Legends client.
 | `POST /lol-lobby/v1/lobby/custom/bots` | `204` | `championId`, `botDifficulty`, `teamId` (string), `position`, `botUuid` (empty string accepted, the client generates the identifier) |
 | `GET /lol-lobby/v2/lobby` | `200` / `404` | 404 when no lobby is open |
 | `DELETE /lol-lobby/v2/lobby` | `204` | closes the open lobby |
-| `GET /lol-lobby/v2/lobby/custom/available-bots` | `200` | champions playable as bots and their difficulties |
+| `GET /lol-lobby/v2/lobby/custom/available-bots` | `200` | champions playable as bots and their difficulties; empty list when no custom lobby is open |
 | `GET /lol-game-data/assets/v1/champion-summary.json` | `200` | champion catalog |
 
 `configuration.mapId` and `configuration.gameMode` do not select the map or the
