@@ -144,6 +144,9 @@ is what tells two presets apart when they carry the same `name`. A preset whose
 JSON is unreadable, or whose `name` is absent or is not usable text, is shown
 under its file name; the error itself is reported when the preset is applied.
 
+The list is grouped by source, the shipped presets first, then your own, and each
+group is ordered by file name.
+
 `pvechallenge/presets/ireaz.json` is the shipped example: it describes my team (me alone,
 no bots) and the enemy team: Warwick top, Amumu jungle, Malphite mid, Kai'Sa bot,
 Lulu support.

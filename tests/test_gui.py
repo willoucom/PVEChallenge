@@ -16,7 +16,7 @@ tk = pytest.importorskip("tkinter")
 from pvechallenge.config import load_config
 from pvechallenge.gui import ICON_PATH, REPO_URL, STATUS_COLORS, build
 from pvechallenge.i18n import t
-from pvechallenge.lobby import available_presets, builtin_presets, preset_label
+from pvechallenge.lobby import available_presets, builtin_presets, user_presets
 from pvechallenge.paths import user_presets_dir
 from pvechallenge.version import app_version
 
@@ -84,9 +84,10 @@ def deposer(nom: str, contenu: dict | None = None) -> None:
 
 
 def ordre_attendu() -> list[str]:
-    """Rows as the window orders them: by label, then by file name."""
+    """Rows as the window orders them: by source, shipped first, then file name."""
     chemins = available_presets()
-    return sorted(chemins, key=lambda stem: (preset_label(chemins[stem]), stem))
+    perso = set(user_presets())
+    return sorted(chemins, key=lambda stem: (stem in perso, chemins[stem].name))
 
 
 # ------------------------------------------------------------- construction

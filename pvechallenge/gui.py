@@ -323,12 +323,19 @@ class App(ttk.Frame):
             return
 
         # The file name stays the identity of the row: it is what resolves the
-        # preset. The `name` field of the JSON is a label, shown and sorted on,
-        # and the file name keeps its own column so two identical labels stay
-        # tellable apart. That column shows the file as it sits on disk,
-        # extension included, so it can be looked for in the folder as spelt.
+        # preset. The `name` field of the JSON is a label, and the file name
+        # keeps its own column so two identical labels stay tellable apart. That
+        # column shows the file as it sits on disk, extension included, so it can
+        # be looked for in the folder as spelt.
+        #
+        # Rows are grouped by source, the shipped presets first, then ordered by
+        # file name. The key sorts on membership of `perso`, not on the source
+        # text: that text is translated, and sorting on it would reorder the
+        # groups from one language to the next.
         libelles = {name: preset_label(path) for name, path in self._presets.items()}
-        for name in sorted(self._presets, key=lambda stem: (libelles[stem], stem)):
+        for name in sorted(
+            self._presets, key=lambda stem: (stem in perso, self._presets[stem].name)
+        ):
             source = t("gui.preset.source.user") if name in perso else t("gui.preset.source.builtin")
             self.tree.insert(
                 "",
