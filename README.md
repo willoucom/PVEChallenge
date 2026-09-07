@@ -11,12 +11,27 @@ adds the bots, launching stays manual.
 
 - Windows, League of Legends client installed and **running**.
 
-The release is a zip holding a folder. Extract it anywhere and run
-`pvechallenge.exe` from inside it; there is nothing to install, and nothing to
-uninstall. Keep the folder together: the executable needs what sits next to it.
+The release carries an installer: download `pvechallenge-<tag>-setup.exe` and run
+it. The application installs for the current user alone, under
+`%LOCALAPPDATA%\Programs\PVE Challenge`, so Windows asks for no administrator
+approval, and it is removed from the usual list of installed applications.
 
-The binary is not code-signed, so Windows SmartScreen warns the first time it
-runs.
+Updating means running the new installer over the installed version: it empties
+the application folder before copying, so nothing of the version it replaces
+survives. Presets and settings live elsewhere and are untouched.
+
+A zip of the application folder is published beside it, for whoever prefers to
+run it without installing anything. Extract it anywhere and run
+`pvechallenge.exe` from inside it, and keep the folder together: the executable
+needs what sits next to it.
+
+Neither file is code-signed, so Windows SmartScreen warns the first time one runs.
+With the installer it warns once and never again. Windows marks a downloaded file
+as coming from the Internet; Explorer carries that mark over to the files it
+extracts from a zip, while a file written by a running program carries no mark at
+all. The zip therefore hands SmartScreen a marked executable on every extraction,
+where the installer takes the warning once, for itself, and the application it
+writes starts unremarked.
 
 To run from source you also need Python 3.14+ and
 [uv](https://docs.astral.sh/uv/) (a single dependency, `requests`):
@@ -115,8 +130,8 @@ A preset is a JSON file, and presets come from two sources:
 - **Shipped presets**, inside the package under `pvechallenge/presets/`. They are
   read-only and travel with the wheel and with the executable.
 - **Your own presets**, in `%APPDATA%\pvechallenge\presets\`. Drop a JSON file there and
-  it becomes available under its filename. That folder is yours: updates and
-  reinstalls never touch it.
+  it becomes available under its filename. That folder is yours: updates,
+  reinstalls and uninstalls never touch it.
 
 A name carried by both sources is usable by neither. The tool refuses it and names
 the file to rename, so that a shipped preset can never be silently replaced by
@@ -247,6 +262,40 @@ Building needs a C compiler: GitHub's Windows runners carry MSVC, and Nuitka
 picks up a local Visual Studio installation on its own. Without one, it downloads
 MinGW-w64 on first use.
 
+### Building the installer
+
+```bash
+uv run python make_installer.py
+```
+
+It compiles `installer.iss` with Inno Setup, from the folder `build.py` produced,
+and writes `dist/pvechallenge-<version>-setup.exe`. It packages, it does not
+build: run before `build.py`, it reports the missing executable rather than
+producing an empty installer. `make_installer.py` is the only place the Inno
+Setup invocation exists, for the same reason `build.py` holds the Nuitka call
+alone.
+
+The wizard asks nothing whose answer is always the same -- no directory, no
+program group, no confirmation page -- and picks English or French from the
+system locale without a selector, as the application does. The one thing it asks
+is whether to add a desktop shortcut, unchecked by default.
+
+Inno Setup is looked up as `ISCC` on `PATH`, then in the per-machine installation
+directories. Not finding it fails the build: a release that silently shipped
+without its installer would point people at a file that is not there.
+
+The installer empties its destination before copying anything. Inno Setup removes
+only what it is told to, and the names a Nuitka distribution carries are not
+stable from one version to the next, so an update would otherwise keep whatever
+the new version no longer ships. Presets make that more than untidiness: the
+package enumerates them at run time, so one left behind would go on being listed,
+and collide with a preset of the same name the user later writes.
+
+The sweep is guarded. Its `Check` function requires the destination to already
+hold `pvechallenge.exe`, so a directory that is not an installation of this
+application -- `/DIR=` accepts any path -- is never emptied, and a first
+installation deletes nothing.
+
 ### Releasing
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`, which runs the tests,
@@ -259,9 +308,10 @@ so `v1.2.0-rc1` is stamped as `1.2.0`; a tag holding no number at all fails the
 build rather than producing a binary labelled with nothing. Publishing is
 repeatable: a Release that already exists is updated instead of refused.
 
-A Release cannot carry a folder, so it carries a zip. That also spares the
-prompt a bare `.exe` earns from browsers. Neither changes anything about
-SmartScreen, which still warns when the unsigned binary is run.
+A Release carries two files, both named after the tag: the installer, which is
+what the top of this README sends people to, and a zip of the application folder
+for the portable case -- a Release cannot carry a folder as such. Neither is
+signed, so SmartScreen still has its say, as described under *Requirements*.
 
 The same workflow can be started by hand, which tests and builds, then uploads
 the binary as a workflow artifact without publishing anything. Artifacts need no

@@ -44,17 +44,31 @@ jobs:
           PVECHALLENGE_VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: uv run python build.py
 
+      # Inno Setup turns that folder into the single file people download. The
+      # tag decides its name too, so a Release lists an installer that says which
+      # version it carries. A manual run builds it as well: an installer that
+      # only ever gets compiled on a tag would break on the day it matters.
+      - name: Build the installer
+        env:
+          PVECHALLENGE_VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: uv run python make_installer.py
+
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: pvechallenge
           path: dist/pvechallenge
           if-no-files-found: error
 
-      # The build produces a folder, which a Release cannot carry as such. The
-      # zip also spares the browser prompt that a bare `.exe` earns. It says
-      # nothing about SmartScreen, which still warns when the unsigned binary is
-      # run. The workflow artifact needs no such treatment: GitHub already
-      # serves artifacts as zips.
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: pvechallenge-setup
+          path: dist/*-setup.exe
+          if-no-files-found: error
+
+      # The zip is the portable alternative to the installer, for whoever wants
+      # the application without installing it. A Release cannot carry a folder as
+      # such, hence the archive. The workflow artifact needs no such treatment:
+      # GitHub already serves artifacts as zips.
       - name: Package the application
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
@@ -73,9 +87,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ github.ref_name }}"
-          asset="dist/pvechallenge-${tag}.zip"
+          installer="dist/pvechallenge-${tag}-setup.exe"
+          archive="dist/pvechallenge-${tag}.zip"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$asset" --clobber
+            gh release upload "$tag" "$installer" "$archive" --clobber
           else
-            gh release create "$tag" "$asset" --generate-notes
+            gh release create "$tag" "$installer" "$archive" --generate-notes
           fi
