@@ -74,6 +74,11 @@ STATUS_COLORS = {
 PAD = 12
 GAP = 8
 
+#: Breathing space between a button's border and its label, horizontal then
+#: vertical. The native theme leaves the text flush against the border, which
+#: reads as cramped once the labels are words rather than icons.
+BUTTON_PAD = (10, 4)
+
 
 def enable_dpi_awareness() -> None:
     """Declare the process display-density aware, before any window exists.
@@ -112,6 +117,9 @@ def apply_native_style(root: tk.Misc) -> None:
     style = ttk.Style(root)
     if "vista" in style.theme_names():
         style.theme_use("vista")
+    # Set on the style rather than on each button: every button of the window
+    # keeps the same size, whichever block it sits in.
+    style.configure("TButton", padding=BUTTON_PAD)
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
         tkfont.nametofont(name).configure(family=UI_FONT[0], size=UI_FONT[1])
 

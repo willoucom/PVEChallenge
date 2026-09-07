@@ -88,7 +88,7 @@ cannot be read is an error, never silently ignored.
 
 ## Usage
 
-Start the application, pick a preset in the list, and click **Appliquer**. The log
+Start the application, pick a preset in the list, and click **Creer le lobby**. The log
 pane shows every step: which lockfile was read, which account is connected, the
 lobby being created, and each bot as it is added. The status line at the bottom
 carries the outcome, and its colour carries the state: amber while working, green
