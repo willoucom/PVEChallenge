@@ -1,18 +1,25 @@
-# LolBotChallenge
+# PVE Challenge
 
-Command-line tool that prepares a League of Legends custom game lobby through the
-client's local API (LCU). It never starts the game: it creates the lobby and adds
-the bots, launching stays manual.
+Windows application that prepares a League of Legends custom game lobby through
+the client's local API (LCU). It never starts the game: it creates the lobby and
+adds the bots, launching stays manual.
+
+> PVE Challenge was created under Riot Games' "Legal Jibber Jabber" policy using
+> assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
 
 ## Requirements
 
 - Windows, League of Legends client installed and **running**.
-- Python 3.14+.
-- [uv](https://docs.astral.sh/uv/) for dependency management (a single dependency:
-  `requests`).
+
+The released `.exe` is standalone: there is nothing else to install. It is not
+code-signed, so Windows SmartScreen warns the first time it runs.
+
+To run from source you also need Python 3.14+ and
+[uv](https://docs.astral.sh/uv/) (a single dependency, `requests`):
 
 ```bash
 uv sync
+uv run pvechallenge
 ```
 
 ## The lockfile
@@ -35,62 +42,91 @@ The tool uses it to build `https://127.0.0.1:<port>` and authenticate with HTTP
 basic auth as `riot:<password>`. The client's certificate is self-signed, so TLS
 verification is disabled.
 
-If the client is installed elsewhere:
+If the client is installed elsewhere, set the path in the window's **Options**
+panel: pick the file with *Parcourir...*, then *Enregistrer*. The setting is kept
+in `%APPDATA%\pvechallenge\config.json` and reused on every run:
 
-```bash
-uv run lolbot --install-dir "D:\Games\League of Legends" lobby ireaz
+```json
+{
+  "lockfile": "D:\\Games\\League of Legends\\lockfile"
+}
 ```
 
-```bash
-uv run lolbot --lockfile "D:\Games\League of Legends\lockfile" lobby ireaz
-```
+Leaving the field empty clears the setting and restores the default path above.
 
-Environment variable equivalents: `LOLBOT_LOCKFILE`, `LOLBOT_INSTALL_DIR`.
+For a one-off override, two environment variables are read as well. The lockfile
+path is resolved in this order, first match wins:
+
+1. `PVECHALLENGE_LOCKFILE`
+2. `PVECHALLENGE_INSTALL_DIR`
+3. `lockfile` in `%APPDATA%\pvechallenge\config.json`
+4. the default path above
+
+An environment variable is a deliberate, one-off override, so it comes before the
+saved setting, which in turn comes before the hardcoded default. The path
+actually used is written to the log on every run. A config file that exists but
+cannot be read is an error, never silently ignored.
 
 ## Usage
 
-### `lobby` — create the lobby from a preset
-
-```bash
-uv run lolbot lobby ireaz
-```
-
-```bash
-uv run lolbot lobby ireaz --difficulty intro
-```
-
-The argument is the name of a preset from `presets/`, or the path to a JSON file.
-`--difficulty` (`intro`, `debutant`, `intermediaire`) overrides the preset's
-difficulty and applies to all of its bots.
+Start the application, pick a preset in the list, and click **Appliquer**. The log
+pane shows every step: which lockfile was read, which account is connected, the
+lobby being created, and each bot as it is added. The status line at the bottom
+carries the outcome, and its colour carries the state: amber while working, green
+on success, red on failure with the reason.
 
 If a lobby is already open in the client, it is closed and recreated. Champion
 names are resolved before any action is taken, so a typo in a preset leaves the
 current lobby untouched.
 
-### `discover` — watch the lobby
+The **Options** panel holds the lockfile path and a button that opens your own
+presets folder in Explorer.
 
-Only issues `GET` requests, never modifies the client's state. Polls
-`GET /lol-lobby/v2/lobby` every 500 ms, prints the full initial lobby state, then
-prints the JSON diff as dotted paths on every change.
+The version sits at the bottom right. It reads `dev` when running from the
+sources: a source tree has no version. A released build stamps the tag it was
+published under into the package, so the window and the file properties can never
+disagree.
 
-```bash
-uv run lolbot discover
-```
+Bot difficulty is not settable from the window: it is the `difficulty` field of
+the preset.
 
-Used to record the exact shape of the JSON as the client evolves. Configurable
-interval: `--interval 0.25`.
+## Language
+
+The interface follows the system locale. English and French are shipped; any
+other locale falls back to English. There is no setting and no selector: the
+language is decided once, at start-up.
+
+Messages live in `pvechallenge/messages.py`, one catalogue per language, keyed by
+symbolic names rather than by English sentences, so rewording a message touches
+the catalogue only. Adding a language means adding a catalogue: a test checks
+that every catalogue holds the same keys and expects the same placeholders, so a
+forgotten message fails the build instead of reaching a user.
+
+The Riot notice is not translated. Its wording is imposed by their policy.
 
 ## Presets
 
-A preset is a JSON file in `presets/`. `presets/ireaz.json` describes my team (me
-alone, no bots) and the enemy team: Warwick top, Amumu jungle, Malphite mid,
-Kai'Sa bot, Lulu support.
+A preset is a JSON file, and presets come from two sources:
+
+- **Shipped presets**, inside the package under `pvechallenge/presets/`. They are
+  read-only and travel with the wheel and with the executable.
+- **Your own presets**, in `%APPDATA%\pvechallenge\presets\`. Drop a JSON file there and
+  it becomes available under its filename. That folder is yours: updates and
+  reinstalls never touch it.
+
+A name carried by both sources is usable by neither. The tool refuses it and names
+the file to rename, so that a shipped preset can never be silently replaced by
+another one of the same name.
+
+`pvechallenge/presets/ireaz.json` is the shipped example: it describes my team (me alone,
+no bots) and the enemy team: Warwick top, Amumu jungle, Malphite mid, Kai'Sa bot,
+Lulu support.
 
 The `lobby` block carries the lobby name and the spectator policy. Map and game
 mode are not part of it: this tool only creates custom games on Summoner's Rift in
 blind pick.
 
-Presets use their own vocabulary, translated to the client's in `lolbot/lobby.py`:
+Presets use their own vocabulary, translated to the client's in `pvechallenge/lobby.py`:
 
 | Preset | Client |
 |---|---|
@@ -120,7 +156,7 @@ All verified against a running League of Legends client.
 
 `configuration.mapId` and `configuration.gameMode` do not select the map or the
 mode: the client derives them from `queueId` and ignores what the body claims.
-They are therefore hardcoded in `lolbot/lobby.py` to the values of queue 3100, so
+They are therefore hardcoded in `pvechallenge/lobby.py` to the values of queue 3100, so
 that the body sent describes the lobby actually created.
 
 Recreating a lobby goes through the `DELETE`, never a bare POST: posted on top of
@@ -133,8 +169,91 @@ The role field is named `position` in the POST body, and comes back as
 `"200"`) but comes back as `0`: membership in `customTeam100` / `customTeam200` is
 what counts.
 
-Any HTTP error prints the request sent, the status, the headers and the full
-response body: nothing is swallowed.
+Any HTTP error is reported whole: the request sent, the status, the headers and
+the full response body. Nothing is swallowed, and nothing is truncated.
+
+## Development
+
+### Watching the lobby
+
+`discover` watches the lobby and reports what changes in its JSON. It only issues
+`GET` requests and never modifies the client's state: it polls
+`GET /lol-lobby/v2/lobby`, prints the full initial lobby state, then prints the
+diff as dotted paths on every change.
+
+```bash
+uv run python -m pvechallenge.discover
+uv run python -m pvechallenge.discover 0.25   # polling interval, in seconds
+```
+
+It exists to record the exact shape of the JSON when a client patch changes it.
+It is deliberately absent from the packaged application, and runs from the
+sources only.
+
+### Running the tests
+
+```bash
+uv run python -m pytest
+```
+
+The suite exercises the real code with no network and no game client: the LCU is
+replaced by a double, and `%APPDATA%` is redirected to a throwaway folder, so no
+test can write to the configuration of the machine running it. The interface
+tests open real Tk windows, kept off-screen.
+
+Nothing is hardcoded about the contents of `pvechallenge/presets/`: adding or
+removing a shipped preset breaks no test.
+
+### Regenerating the icon
+
+`pvechallenge/icon.ico` is versioned, and derived from `assets/logo.png`. Run this
+after changing the logo, never otherwise:
+
+```bash
+uv run python make_icon.py
+```
+
+It writes six sizes, from 16 to 128. There is no 256: the source is 128 wide, and
+enlarging it would invent detail. The two smallest get a one-pixel steel rim and
+livelier colours, because below 32 pixels the dark shield otherwise dissolves into
+a dark taskbar.
+
+### Building the executable
+
+```bash
+uv sync
+uv run python build.py
+```
+
+`build.py` is the only place the Nuitka invocation exists, so a local build and a
+CI build cannot drift apart. It compiles `main.py`, not `pvechallenge/gui.py`: a package
+module compiled as a script loses its relative imports.
+
+The result, `dist/pvechallenge.exe`, is a single file embedding Python, the
+package, its presets and its icon. Building needs a C compiler: GitHub's Windows
+runners carry MSVC, and Nuitka picks up a local Visual Studio installation on its
+own. Without one, it downloads MinGW-w64 on first use.
+
+### Releasing
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which runs the tests,
+builds on `windows-2025`, then attaches the executable to the matching GitHub
+Release. A failing test stops the run before anything is built.
+
+The tag decides the version: it is what people download, so it is what the file
+announces and what the window shows. Windows version resources hold numbers only,
+so `v1.2.0-rc1` is stamped as `1.2.0`; a tag holding no number at all fails the
+build rather than producing a binary labelled with nothing. Publishing is
+repeatable: a Release that already exists is updated instead of refused.
+
+The Release carries a zip rather than the bare `.exe`: browsers warn on, and
+sometimes block, an executable that few people have downloaded. That only
+concerns the download. The binary is unsigned either way, so Windows SmartScreen
+still warns the first time it runs.
+
+The same workflow can be started by hand, which tests and builds, then uploads
+the binary as a workflow artifact without publishing anything. Artifacts need no
+zipping of their own: GitHub already serves them that way.
 
 ## Still to verify
 

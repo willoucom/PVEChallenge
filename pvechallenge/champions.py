@@ -1,26 +1,27 @@
-"""Resolution d'un nom de champion vers son `championId`, depuis le client.
+"""Resolving a champion name to its `championId`, read from the client.
 
-Aucune table statique : le client fait foi.
+No static table: the client is the authority.
 """
 
 from .client import LcuClient
+from .i18n import t
 
 CHAMPION_SUMMARY = "/lol-game-data/assets/v1/champion-summary.json"
 AVAILABLE_BOTS = "/lol-lobby/v2/lobby/custom/available-bots"
 
 
 class ChampionError(RuntimeError):
-    """Champion inconnu ou indisponible en bot."""
+    """Champion unknown, or unavailable as a bot."""
 
 
 def load_bot_champions(client: LcuClient) -> dict[str, int]:
-    """Retourne `nom du champion -> championId`, restreint aux bots disponibles.
+    """Return `champion name -> championId`, restricted to available bots.
 
-    Le catalogue de champions du client contient plusieurs entrees portant le meme
-    nom : le champion et ses variantes de mode de jeu, qui ont des identifiants
-    differents. Filtrer sur les identifiants que `available-bots` declare est ce
-    qui distingue le bon du reste ; resoudre sur le nom seul renvoie une variante
-    que l'ajout de bot refusera.
+    The client's champion catalog holds several entries sharing the same name:
+    the champion and its game-mode variants, which carry different identifiers.
+    Filtering on the identifiers `available-bots` declares is what singles out
+    the right one; resolving on the name alone returns a variant that adding a
+    bot will refuse.
     """
     available = {entry["id"] for entry in client.get_json(AVAILABLE_BOTS)}
     resolved: dict[str, int] = {}
@@ -31,7 +32,7 @@ def load_bot_champions(client: LcuClient) -> dict[str, int]:
 
 
 def resolve(table: dict[str, int], name: str) -> int:
-    """Traduit un nom de champion en `championId`, ou leve `ChampionError`."""
+    """Translate a champion name into a `championId`, or raise `ChampionError`."""
     if name in table:
         return table[name]
 
@@ -41,7 +42,5 @@ def resolve(table: dict[str, int], name: str) -> int:
         return table[matches[0]]
 
     near = sorted(known for known in table if lowered in known.casefold())
-    detail = f" Proches : {', '.join(near)}." if near else ""
-    raise ChampionError(
-        f"Champion inconnu ou indisponible en bot : {name!r}.{detail}"
-    )
+    detail = t("champion.near_matches", names=", ".join(near)) if near else ""
+    raise ChampionError(t("champion.unknown", name=name, detail=detail))

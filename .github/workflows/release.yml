@@ -1,0 +1,80 @@
+name: release
+
+# A `v*` tag publishes the executable in the matching Release.
+# The manual trigger builds without publishing: it exists to check that the
+# build still holds, without having to create a tag to find out.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Test before building: a green binary beats a delivered one.
+      # The interface tests open real Tk windows, kept off-screen; the Windows
+      # runner has a desktop session, unlike a Linux runner where they would be
+      # skipped.
+      - name: Run the tests
+        run: uv run python -m pytest
+
+      # The runner carries MSVC: Nuitka has no compiler to download.
+      #
+      # On a tag, the tag decides the version stamped into the binary: it is what
+      # a user downloads, so it is what the file must announce. A manual run has
+      # no tag, and the variable stays empty so the build falls back to
+      # pyproject.toml.
+      - name: Build the executable
+        env:
+          PVECHALLENGE_VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+        run: uv run python build.py
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: pvechallenge-exe
+          path: dist/pvechallenge.exe
+          if-no-files-found: error
+
+      # Browsers warn on, and sometimes block, a rarely-downloaded `.exe`: a zip
+      # comes down without a prompt. This says nothing about SmartScreen, which
+      # still warns when the unsigned binary is run. The workflow artifact needs
+      # no such treatment: GitHub already serves artifacts as zips.
+      - name: Package the executable
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: >
+          Compress-Archive
+          -Path dist/pvechallenge.exe
+          -DestinationPath dist/pvechallenge-${{ github.ref_name }}.zip
+
+      # Creating a Release that already exists is an error, which would break a
+      # re-run from the Actions page, or a tag pushed again after its Release was
+      # deleted. Uploading over an existing one keeps the step repeatable.
+      - name: Publish to the Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.ref_name }}"
+          asset="dist/pvechallenge-${tag}.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber
+          else
+            gh release create "$tag" "$asset" --generate-notes
+          fi

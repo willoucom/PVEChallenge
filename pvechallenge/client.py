@@ -1,7 +1,7 @@
-"""Client HTTP minimal pour l'API locale du client League of Legends (LCU).
+"""Minimal HTTP client for the League of Legends client's local API (LCU).
 
-Le client expose son API sur https://127.0.0.1:<port> avec un certificat
-auto-signe : la verification TLS est desactivee volontairement.
+The client exposes its API on https://127.0.0.1:<port> behind a self-signed
+certificate: TLS verification is disabled on purpose.
 """
 
 import json
@@ -10,13 +10,14 @@ from typing import Any
 import requests
 import urllib3
 
+from .i18n import t
 from .lockfile import Credentials
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class LcuError(RuntimeError):
-    """Erreur HTTP renvoyee par la LCU. Porte la reponse complete."""
+    """HTTP error returned by the LCU. Carries the whole response."""
 
     def __init__(self, message: str, response: requests.Response) -> None:
         super().__init__(message)
@@ -24,13 +25,13 @@ class LcuError(RuntimeError):
 
 
 def format_response(response: requests.Response) -> str:
-    """Rend une reponse HTTP en entier : statut, en-tetes, corps.
+    """Render an HTTP response in full: status, headers, body.
 
-    Le corps n'est jamais tronque ni avale : c'est le seul moyen d'ajuster les
-    payloads envoyes a des endpoints non verifies.
+    The body is never truncated nor swallowed: it is the only way to adjust the
+    payloads sent to endpoints that have not been verified yet.
     """
     lines = [
-        f"--- Reponse LCU ---",
+        t("http.header"),
         f"{response.request.method} {response.request.url}",
         f"HTTP {response.status_code} {response.reason}",
     ]
@@ -39,29 +40,29 @@ def format_response(response: requests.Response) -> str:
     if request_body:
         if isinstance(request_body, bytes):
             request_body = request_body.decode("utf-8", errors="replace")
-        lines.append("Corps envoye :")
+        lines.append(t("http.request_body"))
         lines.append(request_body)
 
-    lines.append("En-tetes de reponse :")
+    lines.append(t("http.response_headers"))
     for name, value in response.headers.items():
         lines.append(f"  {name}: {value}")
 
-    lines.append("Corps de reponse :")
+    lines.append(t("http.response_body"))
     text = response.text
     if not text:
-        lines.append("  <vide>")
+        lines.append(t("http.empty"))
     else:
         try:
             lines.append(json.dumps(response.json(), indent=2, ensure_ascii=False))
         except ValueError:
             lines.append(text)
 
-    lines.append("--- fin reponse ---")
+    lines.append(t("http.footer"))
     return "\n".join(lines)
 
 
 class LcuClient:
-    """Session HTTP authentifiee vers la LCU."""
+    """Authenticated HTTP session against the LCU."""
 
     def __init__(self, credentials: Credentials, timeout: float = 10.0) -> None:
         self.credentials = credentials
@@ -76,20 +77,17 @@ class LcuClient:
         return self.credentials.base_url
 
     def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
-        """Envoie une requete. Ne leve pas sur un statut d'erreur HTTP."""
+        """Send a request. Does not raise on an HTTP error status."""
         url = f"{self.base_url}{path}"
         kwargs.setdefault("timeout", self.timeout)
         return self.session.request(method, url, **kwargs)
 
     def request_checked(self, method: str, path: str, **kwargs: Any) -> requests.Response:
-        """Comme `request`, mais leve `LcuError` (avec la reponse complete) sur 4xx/5xx."""
+        """Like `request`, but raises `LcuError` with the full response on 4xx/5xx."""
         response = self.request(method, path, **kwargs)
         if response.status_code >= 400:
-            raise LcuError(
-                f"{method} {path} a echoue (HTTP {response.status_code}).\n"
-                f"{format_response(response)}",
-                response,
-            )
+            summary = t("http.failed", method=method, path=path, status=response.status_code)
+            raise LcuError(f"{summary}\n{format_response(response)}", response)
         return response
 
     def get_json(self, path: str, **kwargs: Any) -> Any:
@@ -109,5 +107,5 @@ class LcuClient:
 
 
 def check_connection(client: LcuClient) -> dict[str, Any]:
-    """Verifie que la LCU repond. Retourne le resultat de GET /lol-summoner/v1/current-summoner."""
+    """Check that the LCU answers. Returns GET /lol-summoner/v1/current-summoner."""
     return client.get_json("/lol-summoner/v1/current-summoner")
