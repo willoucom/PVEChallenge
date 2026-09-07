@@ -1,0 +1,23 @@
+{
+  "name": "5 Warwick (intermédiaire)",
+  "description": "Partie personnalisee Faille de l'invocateur : plein de Warwick.",
+  "lobby": {
+    "lobbyName": "Warwick",
+    "spectatorPolicy": "AllAllowed"
+  },
+  "difficulty": "intermediaire",
+  "teams": {
+    "mine": {
+      "bots": []
+    },
+    "enemy": {
+      "bots": [
+        { "champion": "Warwick", "role": "top" },
+        { "champion": "Warwick", "role": "jungle" },
+        { "champion": "Warwick", "role": "mid" },
+        { "champion": "Warwick", "role": "bot" },
+        { "champion": "Warwick", "role": "support" }
+      ]
+    }
+  }
+}
