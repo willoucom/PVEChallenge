@@ -11,6 +11,7 @@ from pvechallenge.lobby import (
     available_presets,
     builtin_presets,
     load_preset,
+    preset_label,
     preset_path,
     run_lobby,
     user_presets,
@@ -96,6 +97,38 @@ def test_preset_incoherent_leve(champ, valeur, inclus):
 
     with pytest.raises(PresetError):
         load_preset(PERSO)
+
+
+# ------------------------------------------------------------- displayed label
+
+
+def test_libelle_dun_preset_est_son_champ_name(tmp_path):
+    chemin = tmp_path / "warwick.json"
+    chemin.write_text(json.dumps({"name": "5 Warwick (intro)"}), encoding="utf-8")
+
+    assert preset_label(chemin) == "5 Warwick (intro)"
+
+
+@pytest.mark.parametrize(
+    "contenu",
+    [
+        pytest.param(json.dumps({"difficulty": "intro"}), id="name-absent"),
+        pytest.param(json.dumps({"name": 7}), id="name-non-textuel"),
+        pytest.param(json.dumps({"name": "   "}), id="name-vide"),
+        pytest.param(json.dumps(["pas", "un", "objet"]), id="json-nest-pas-un-objet"),
+        pytest.param("{ ceci n'est pas du json", id="json-invalide"),
+    ],
+)
+def test_libelle_retombe_sur_le_nom_de_fichier(tmp_path, contenu):
+    """No preset may be missing from the list because of its own contents."""
+    chemin = tmp_path / "warwick.json"
+    chemin.write_text(contenu, encoding="utf-8")
+
+    assert preset_label(chemin) == "warwick"
+
+
+def test_libelle_dun_fichier_absent_est_son_nom(tmp_path):
+    assert preset_label(tmp_path / "warwick.json") == "warwick"
 
 
 # ---------------------------------------------------- creation and reporting

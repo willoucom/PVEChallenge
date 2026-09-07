@@ -26,6 +26,7 @@ from .lobby import (
     PresetError,
     available_presets,
     builtin_presets,
+    preset_label,
     run_lobby,
     user_presets,
 )
@@ -165,10 +166,14 @@ class App(ttk.Frame):
         block.grid(row=1, column=0, sticky="ew", pady=(0, GAP))
         block.columnconfigure(0, weight=1)
 
-        self.tree = ttk.Treeview(block, columns=("source",), height=5, selectmode="browse")
+        self.tree = ttk.Treeview(
+            block, columns=("file", "source"), height=5, selectmode="browse"
+        )
         self.tree.heading("#0", text=t("gui.preset.name"))
+        self.tree.heading("file", text=t("gui.preset.file"))
         self.tree.heading("source", text=t("gui.preset.source"))
         self.tree.column("#0", width=220, anchor="w")
+        self.tree.column("file", width=140, anchor="w")
         self.tree.column("source", width=120, anchor="w")
         self.tree.grid(row=0, column=0, sticky="ew")
         self.tree.bind("<Double-1>", lambda _event: self.apply_selected())
@@ -309,9 +314,21 @@ class App(ttk.Frame):
             self.set_status("erreur", t("gui.error.presets_unreadable", error=exc))
             return
 
-        for name in sorted(self._presets):
+        # The file name stays the identity of the row: it is what resolves the
+        # preset. The `name` field of the JSON is a label, shown and sorted on,
+        # and the file name keeps its own column so two identical labels stay
+        # tellable apart. That column shows the file as it sits on disk,
+        # extension included, so it can be looked for in the folder as spelt.
+        libelles = {name: preset_label(path) for name, path in self._presets.items()}
+        for name in sorted(self._presets, key=lambda stem: (libelles[stem], stem)):
             source = t("gui.preset.source.user") if name in perso else t("gui.preset.source.builtin")
-            self.tree.insert("", "end", iid=name, text=name, values=(source,))
+            self.tree.insert(
+                "",
+                "end",
+                iid=name,
+                text=libelles[name],
+                values=(self._presets[name].name, source),
+            )
 
         children = self.tree.get_children()
         if children:

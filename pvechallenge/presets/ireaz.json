@@ -1,8 +1,8 @@
 {
-  "name": "ireaz",
+  "name": "iReaz Challenge",
   "description": "Partie personnalisee Faille de l'invocateur : moi seul contre 5 bots.",
   "lobby": {
-    "lobbyName": "ireaz",
+    "lobbyName": "iReaz Challenge",
     "spectatorPolicy": "AllAllowed"
   },
   "difficulty": "intermediaire",

@@ -16,7 +16,7 @@ tk = pytest.importorskip("tkinter")
 from pvechallenge.config import load_config
 from pvechallenge.gui import ICON_PATH, REPO_URL, STATUS_COLORS, build
 from pvechallenge.i18n import t
-from pvechallenge.lobby import builtin_presets
+from pvechallenge.lobby import available_presets, builtin_presets, preset_label
 from pvechallenge.paths import user_presets_dir
 from pvechallenge.version import app_version
 
@@ -76,10 +76,17 @@ def couleur(widget) -> str:
     return str(widget.cget("foreground"))
 
 
-def deposer(nom: str) -> None:
+def deposer(nom: str, contenu: dict | None = None) -> None:
     dossier = user_presets_dir()
     dossier.mkdir(parents=True, exist_ok=True)
-    (dossier / f"{nom}.json").write_text(json.dumps({"name": nom}), encoding="utf-8")
+    corps = json.dumps({"name": nom} if contenu is None else contenu)
+    (dossier / f"{nom}.json").write_text(corps, encoding="utf-8")
+
+
+def ordre_attendu() -> list[str]:
+    """Rows as the window orders them: by label, then by file name."""
+    chemins = available_presets()
+    return sorted(chemins, key=lambda stem: (preset_label(chemins[stem]), stem))
 
 
 # ------------------------------------------------------------- construction
@@ -156,10 +163,15 @@ def test_icone_de_fenetre_posee(fenetre):
 
 def test_liste_les_presets_inclus_avec_leur_source(fenetre, inclus):
     _root, application = fenetre
+    attendus = ordre_attendu()
 
-    assert list(application.tree.get_children()) == inclus
-    assert application.tree.item(inclus[0], "values") == (t("gui.preset.source.builtin"),)
-    assert application.tree.selection() == (inclus[0],)
+    assert sorted(attendus) == inclus
+    assert list(application.tree.get_children()) == attendus
+    assert application.tree.item(attendus[0], "values") == (
+        f"{attendus[0]}.json",
+        t("gui.preset.source.builtin"),
+    )
+    assert application.tree.selection() == (attendus[0],)
     assert couleur(application.status) == STATUS_COLORS["neutre"]
 
 
@@ -178,8 +190,36 @@ def test_preset_utilisateur_apparait_marque_perso(fenetre, inclus):
     application.refresh_presets()
     root.update()
 
-    assert list(application.tree.get_children()) == sorted(inclus + [PERSO])
-    assert application.tree.item(PERSO, "values") == (t("gui.preset.source.user"),)
+    assert sorted(application.tree.get_children()) == sorted(inclus + [PERSO])
+    assert list(application.tree.get_children()) == ordre_attendu()
+    assert application.tree.item(PERSO, "values") == (
+        f"{PERSO}.json",
+        t("gui.preset.source.user"),
+    )
+
+
+def test_le_libelle_vient_du_champ_name_et_le_fichier_garde_sa_colonne(fenetre, inclus):
+    root, application = fenetre
+    deposer(PERSO, {"name": "5 Warwick (intro)"})
+
+    application.refresh_presets()
+    root.update()
+
+    assert application.tree.item(PERSO, "text") == "5 Warwick (intro)"
+    assert application.tree.item(PERSO, "values")[0] == f"{PERSO}.json"
+
+
+def test_le_libelle_retombe_sur_le_nom_de_fichier_si_le_json_est_casse(fenetre, inclus):
+    """A broken preset must not take the list down with it."""
+    root, application = fenetre
+    dossier = user_presets_dir()
+    dossier.mkdir(parents=True, exist_ok=True)
+    (dossier / f"{PERSO}.json").write_text("{ ceci n'est pas du json", encoding="utf-8")
+
+    application.refresh_presets()
+    root.update()
+
+    assert application.tree.item(PERSO, "text") == PERSO
 
 
 def test_collision_retire_le_nom_et_le_signale_en_rouge(fenetre, inclus):

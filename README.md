@@ -131,12 +131,18 @@ A preset is a JSON file, and presets come from two sources:
 - **Shipped presets**, inside the package under `pvechallenge/presets/`. They are
   read-only and travel with the wheel and with the executable.
 - **Your own presets**, in `%APPDATA%\pvechallenge\presets\`. Drop a JSON file there and
-  it becomes available under its filename. That folder is yours: updates,
-  reinstalls and uninstalls never touch it.
+  it appears in the list. That folder is yours: updates, reinstalls and
+  uninstalls never touch it.
 
-A name carried by both sources is usable by neither. The tool refuses it and names
-the file to rename, so that a shipped preset can never be silently replaced by
-another one of the same name.
+A file name carried by both sources is usable by neither. The tool refuses it and
+names the file to rename, so that a shipped preset can never be silently replaced
+by another one of the same name.
+
+In the list, a preset is shown under its `name` field, and identified by its file
+name, which has its own column: the file name is what resolves the preset, and it
+is what tells two presets apart when they carry the same `name`. A preset whose
+JSON is unreadable, or whose `name` is absent or is not usable text, is shown
+under its file name; the error itself is reported when the preset is applied.
 
 `pvechallenge/presets/ireaz.json` is the shipped example: it describes my team (me alone,
 no bots) and the enemy team: Warwick top, Amumu jungle, Malphite mid, Kai'Sa bot,

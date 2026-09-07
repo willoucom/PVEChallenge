@@ -98,6 +98,25 @@ def available_presets() -> dict[str, Path]:
     return {name: path for name, path in (builtin | user).items() if name not in collisions}
 
 
+def preset_label(path: Path) -> str:
+    """Displayable name of a preset: its `name` field, falling back to the file name.
+
+    Listing the presets must never fail on the contents of one of them: a file
+    whose JSON is broken, or whose `name` is absent or is not usable text, still
+    appears, under the only name certain to exist. The failure surfaces when the
+    preset is applied, where `load_preset` reports it in full.
+    """
+    try:
+        preset = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return path.stem
+
+    label = preset.get("name") if isinstance(preset, dict) else None
+    if isinstance(label, str) and label.strip():
+        return label
+    return path.stem
+
+
 def preset_path(name: str) -> Path:
     """Resolve a preset name: file path, user preset, or shipped preset."""
     candidate = Path(name)
