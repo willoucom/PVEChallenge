@@ -1,0 +1,7 @@
+# The site is this repository's README, rendered by GitHub Pages.
+#
+# The theme carries the header band and, with the layout overridden beside it,
+# the two buttons a visitor is looking for. The tagline comes from here because
+# the repository itself carries no description.
+theme: jekyll-theme-cayman
+description: Windows application that prepares a League of Legends custom game lobby
